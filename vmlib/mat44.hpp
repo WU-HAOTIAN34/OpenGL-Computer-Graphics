@@ -228,10 +228,13 @@ Mat44f make_scaling( float aSX, float aSY, float aSZ ) noexcept
 {
 	//TODO: your implementation goes here
 	//TODO: remove the following when you start your implementation
-	(void)aSX;  // Avoid warnings about unused arguments until the function
-	(void)aSY;  // is properly implemented.
-	(void)aSZ;
-	return kIdentity44f;
+	Mat44f res = kIdentity44f;
+
+	res.v[0] = aSX;
+	res.v[5] = aSY;
+	res.v[10] = aSZ;
+
+	return res;
 }
 
 
@@ -248,10 +251,10 @@ Mat44f make_perspective_projection( float aFovInRadians, float aAspect, float aN
 
 	res.v[0] = 1.0f / (aAspect * std::tan(aFovInRadians / 2.0f));
 	res.v[5] = 1.0f / std::tan(aFovInRadians / 2.0f);
-	res.v[10] = -(aFar + aNear) / (aNear - aFar);
-	res.v[11] = -(2.0f * aFar * aNear) / (aNear - aFar);
+	res.v[10] = -(aFar + aNear) / ( aFar - aNear );
+	res.v[11] = -(2.0f * aFar * aNear) / (aFar - aNear );
 	res.v[14] = -1.0f;
-	
+
 
 	
 	return res;

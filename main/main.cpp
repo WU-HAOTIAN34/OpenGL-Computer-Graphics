@@ -3,10 +3,10 @@
 
 #include <typeinfo>
 #include <stdexcept>
-
+#include <stb_image.h>
 #include <cstdio>
 #include <cstdlib>
-#include <rapidobj/rapidobj.hpp>
+
 #include "../support/error.hpp"
 #include "../support/program.hpp"
 #include "../support/checkpoint.hpp"
@@ -15,13 +15,16 @@
 #include "../vmlib/vec4.hpp"
 #include "../vmlib/mat44.hpp"
 #include "../vmlib/mat33.hpp"
-#include "defaults.hpp"
 
+#include "defaults.hpp"
+#include "model.hpp"
+#include "simple_mesh.hpp"
+#include "loadobj.hpp"
+#include "texture.hpp"
 
 namespace
 {
 	constexpr char const* kWindowTitle = "COMP3811 - CW2";
-
 
 	constexpr float kPi_ = 3.1415926f;
 
@@ -35,20 +38,17 @@ namespace
 		struct CamCtrl_
 		{
 			bool cameraActive;
-			bool actionZoomIn, actionZoomOut, actionLeft, actionRight, speedUP, slowDown, forword, backword;
-
+			bool actionZoomIn, actionZoomOut, actionLeft, actionRight, speedUP, slowDown, forword, backword, animation;
+			
 			float phi, theta;
-			float radius;
-
+			float radius, x, y, time;
+			
 			float lastX, lastY;
 		} camControl;
 	};
 
 
 	void glfw_callback_motion_(GLFWwindow*, double, double);
-
-
-
 
 	void glfw_callback_error_( int, char const* );
 
@@ -63,87 +63,6 @@ namespace
 		~GLFWWindowDeleter();
 		GLFWwindow* window;
 	};
-}
-
-struct SimpleMeshData
-{
-	std::vector<Vec3f> positions;
-	std::vector<Vec3f> colors;
-	std::vector<Vec3f> normals;
-};
-
-SimpleMeshData load_wavefront_obj(char const* aPath)
-{
-	auto result = rapidobj::ParseFile(aPath);
-	if (result.error) {
-		throw Error("Unable to load OBJ file ¡¯%s¡¯: %s", aPath, result.error.code.message());
-	}
-	rapidobj::Triangulate(result);
-	SimpleMeshData ret;
-	for (auto const& shape : result.shapes) {
-		for (std::size_t i = 0; i < shape.mesh.indices.size(); ++i) {
-			auto const& idx = shape.mesh.indices[i];
-			ret.positions.emplace_back(Vec3f{
-			result.attributes.positions[idx.position_index * 3 + 0],
-			result.attributes.positions[idx.position_index * 3 + 1],
-			result.attributes.positions[idx.position_index * 3 + 2]
-				});
-			
-
-			ret.normals.emplace_back(Vec3f{
-					result.attributes.normals[idx.normal_index * 3 + 0],
-					result.attributes.normals[idx.normal_index * 3 + 1],
-					result.attributes.normals[idx.normal_index * 3 + 2]
-			});
-
-			auto const& mat = result.materials[shape.mesh.material_ids[i / 3]];
-			ret.colors.emplace_back(Vec3f{
-				mat.ambient[0],
-				mat.ambient[1],
-				mat.ambient[2]
-				});
-		}
-	}
-
-	return ret;
-}
-
-GLuint create_vao(SimpleMeshData const& aMeshData)
-{
-	GLuint positionVBO = 0;
-	glGenBuffers(1, &positionVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-	glBufferData(GL_ARRAY_BUFFER, aMeshData.positions.size() * sizeof(Vec3f), aMeshData.positions.data(), GL_STATIC_DRAW);
-
-
-	GLuint colorVBO = 0;
-	glGenBuffers(1, &colorVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-	glBufferData(GL_ARRAY_BUFFER, aMeshData.colors.size() * sizeof(Vec3f), aMeshData.colors.data(), GL_STATIC_DRAW);
-
-	GLuint normalVBO = 0;
-	glGenBuffers(1, &normalVBO);
-	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-	glBufferData(GL_ARRAY_BUFFER, aMeshData.normals.size() * sizeof(Vec3f), aMeshData.normals.data(), GL_STATIC_DRAW);
-
-	GLuint vao = 0;
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-
-	glBindBuffer(GL_ARRAY_BUFFER, positionVBO);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(0);
-
-	glBindBuffer(GL_ARRAY_BUFFER, colorVBO);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(1);
-
-	glBindBuffer(GL_ARRAY_BUFFER, normalVBO);
-	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(2);
-
-
-	return vao;
 }
 
 
@@ -229,7 +148,9 @@ int main() try
 
 	// TODO: global GL setup goes here
 	glEnable(GL_FRAMEBUFFER_SRGB);
-	glEnable(GL_CULL_FACE);
+	//glCullFace(GL_BACK);
+	//glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
 	glClearColor(0.2f, 0.2f, 0.2f, 0.0f);
 
 	OGL_CHECKPOINT_ALWAYS();
@@ -248,17 +169,83 @@ int main() try
 		{ GL_VERTEX_SHADER, "assets/default.vert" },
 		{ GL_FRAGMENT_SHADER, "assets/default.frag" }
 	});
+	ShaderProgram prog2({
+		{ GL_VERTEX_SHADER, "assets/vert2.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/frag2.frag" }
+		});
+	ShaderProgram prog3({
+		{ GL_VERTEX_SHADER, "assets/vert3.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/frag3.frag" }
+		});
 	state.prog = &prog;
 	state.camControl.radius = 10.f;
+
+	state.camControl.x = 0.0f;
+	state.camControl.y = 0.0f;
+
 	auto last = Clock::now();
 	float angle = 0.f;
 	OGL_CHECKPOINT_ALWAYS();
 	
 	// TODO: global GL setup goes here
+
 	SimpleMeshData armadilloMesh;
 	armadilloMesh = load_wavefront_obj("assets/parlahti.obj");
 	GLuint vao = create_vao(armadilloMesh);
 	std::size_t vertexCount = armadilloMesh.positions.size();
+
+	SimpleMeshData armadilloMesh2;
+	armadilloMesh2 = load_wavefront_obj("assets/landingpad.obj");
+	GLuint vao2 = create_vao(armadilloMesh2);
+	std::size_t vertexCount2 = armadilloMesh2.positions.size();
+
+
+	auto cyl =  make_cylinder(true, 5, { 0.f, 0.4f, 0.f },
+		make_rotation_z(3.141592f / 2.f) *
+		make_scaling(0.3f, 0.3f, 0.3f) 
+	);
+	auto cy2 = make_cylinder(true, 4, { 0.3f, 0.3f, 0.3f },
+		make_rotation_z(3.141592f / 2.f)* 
+		make_scaling(1.f, 0.2f, 0.2f) * 
+		make_translation({ 0.3f, 0.f, 0.f })
+	);
+	auto cy3 = make_cylinder(true, 255, { 0.3f, 0.2f, 0.6f },
+		make_rotation_y(3.141592f / 4.f)*
+		make_scaling(0.4f, 0.1f, 0.1f) *
+		make_translation({ 0.35f, 10.f, 0.f })
+	);
+	auto cy4 = make_cylinder(true, 255, { 0.3f, 0.2f, 0.6f },
+		make_rotation_y(3.141592f / 4.f * 3.f) *
+		make_scaling(0.4f, 0.1f, 0.1f) *
+		make_translation({ 0.35f, 10.f, 0.f })
+	);
+	auto cy5 = make_cylinder(true, 255, { 0.3f, 0.2f, 0.6f },
+		make_rotation_y(-3.141592f / 4.f) *
+		make_scaling(0.4f, 0.1f, 0.1f) *
+		make_translation({ 0.35f, 10.f, 0.f })
+	);
+	auto cy6 = make_cylinder(true, 255, { 0.3f, 0.2f, 0.6f },
+		make_rotation_y(-3.141592f / 4.f * 3.f) *
+		make_scaling(0.4f, 0.1f, 0.1f) *
+		make_translation({ 0.35f, 10.f, 0.f })
+	);
+	auto cy7 = make_cylinder(true, 3, { 0.f, 0.f, 0.6f },
+		make_rotation_z(3.141592f / 2.f)*
+		make_scaling(0.5f, 0.05f, 0.04f)*
+		make_translation({ 2.6f, 0.f, 0.f })
+	);
+	auto ship1 = concatenate( std::move(cyl), cy2 );
+	auto ship2 = concatenate(std::move(ship1), cy3);
+	auto ship3 = concatenate(std::move(ship2), cy4);
+	auto ship4 = concatenate(std::move(ship3), cy5);
+	auto ship5 = concatenate(std::move(ship4), cy6);
+	auto ship = concatenate(std::move(ship5), cy7);
+	GLuint vao3 = create_vao(ship);
+	std::size_t vertexCount3 = ship.positions.size();
+
+
+	GLuint tex = load_texture_2d("assets/L4343A-4k.jpeg");
+
 
 	OGL_CHECKPOINT_ALWAYS();
 	
@@ -297,40 +284,57 @@ int main() try
 		float dt = std::chrono::duration_cast<Secondsf>(now - last).count();
 		last = now;
 
-
-		angle += dt * kPi_ * 0.3f;
+		angle += 0;
 		if (angle >= 2.f * kPi_)
 			angle -= 2.f * kPi_;
 
 		float sp = kMovementPerSecond_;
 
-		if (state.camControl.speedUP) {
+		if (state.camControl.speedUP) 
 			sp = sp * 4;
-		}
 		else if (state.camControl.slowDown)
-		{
 			sp = sp / 4;
-		}
 
 		if (state.camControl.actionZoomIn)
 			state.camControl.radius -= sp * dt;
 		else if (state.camControl.actionZoomOut)
 			state.camControl.radius += sp * dt;
-		else if (state.camControl.actionLeft)
-			state.camControl.theta += sp * dt;
+		else if (state.camControl.actionLeft) 
+			state.camControl.x -= sp * dt;
 		else if (state.camControl.actionRight)
-			state.camControl.phi += sp * dt;
+			state.camControl.x += sp * dt;
+		else if (state.camControl.forword)
+			state.camControl.y += sp * dt;
+		else if (state.camControl.backword)
+			state.camControl.y -= sp * dt;
 
 		if (state.camControl.radius <= 0.1f)
 			state.camControl.radius = 0.1f;
 
+		float y = 0.f;
+		float x = 0.f;
+		Mat44f T1 = make_translation({ 0.f, 0.0f, 0.0f });
+		Mat44f T2 = make_rotation_z(0.f);
+		if (state.camControl.animation) {
+			if (state.camControl.time < 75.0f) {
+				state.camControl.time += 1.f;
+			}
+			float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
+			float c = std::cos(th);
+			float s = std::sin(th);
+			y = 10.0f * s;
+			x = 10.f - 10.f * c;
+			T1 = make_translation({ x, y, 0.0f });
+			T2 = make_rotation_z(kPi_ / 2.f - th - 3.141592f / 2.f);
+		}
+	
 		// Draw scene
 		OGL_CHECKPOINT_DEBUG();
 
 		//TODO: draw frame
 		Mat44f Rx = make_rotation_x(state.camControl.theta);
 		Mat44f Ry = make_rotation_y(state.camControl.phi);
-		Mat44f T = make_translation({ 0.f, 0.f, -state.camControl.radius });
+		Mat44f T = make_translation({ -state.camControl.x, -state.camControl.y, -state.camControl.radius });
 
 		Mat44f model2world = make_rotation_y(angle);
 		Mat44f world2camera = T * Rx * Ry;
@@ -342,10 +346,12 @@ int main() try
 		Mat44f projCameraWorld = projection * world2camera;
 
 		Mat33f normalMatrix = mat44_to_mat33(transpose(invert(model2world)));
+
 		glClear(GL_COLOR_BUFFER_BIT);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		glUseProgram(prog.programId());
 		
-
 		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 
@@ -354,9 +360,69 @@ int main() try
 		glUniform3f(3, 0.9f, 0.9f, 0.6f);
 		glUniform3f(4, 0.05f, 0.05f, 0.05f);
 
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, tex);
+
 		glBindVertexArray(vao);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+		
+		glUseProgram(0);
+		
+		/*glUseProgram(prog3.programId());
+
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		lightDir = normalize(Vec3f{ 0.0f, 1.f, -1.f });
+		glUniform3fv(2, 1, &lightDir.x);
+		glUniform3f(3, 0.9f, 0.9f, 0.6f);
+		glUniform3f(4, 0.05f, 0.05f, 0.05f);*/
+
+		glUseProgram(prog2.programId());
+
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		glUniform3f(2, 0.3f + x, -0.6f + y, 0.3f);
+		glUniform3f(3, 0.05f, 0.05f, 0.05f);
+		glUniform3f(4, 0.1f, 0.5f, 0.1f);
+		glUniform3f(5, state.camControl.x, state.camControl.y, state.camControl.radius);
+		glUniform1f(6, 0.5f);
+		glUniform3f(7, -0.3f + x, -0.3f + y, -0.3f);
+		glUniform3f(8, 0.6f, 0.6f, 0.1f);
+		glUniform3f(9, 0.f + x, 0.4f + y, 0.f);
+		glUniform3f(10, 0.7f, 0.f, 0.f);
+
+
+		T = make_translation({ 25.f, -0.97f, 15.0f });
+		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+		glBindVertexArray(vao2);
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+
+		T = make_translation({ 0.f, -0.97f, 0.0f });
+		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+		glBindVertexArray(vao2);
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+
+		glUseProgram(0);
+		glUseProgram(prog2.programId());
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		glUniform3f(2, 0.3f, -0.6f, 0.3f);
+		glUniform3f(3, 0.05f, 0.05f, 0.05f);
+		glUniform3f(4, 0.1f, 0.5f, 0.1f);
+		glUniform3f(5, state.camControl.x, state.camControl.y, state.camControl.radius);
+		glUniform1f(6, 0.5f);
+		glUniform3f(7, -0.3f, -0.3f, -0.3f);
+		glUniform3f(8, 0.6f, 0.6f, 0.1f);
+		glUniform3f(9, 0.f, 0.4f, 0.f);
+		glUniform3f(10, 0.7f, 0.f, 0.f);
+
+		T = make_translation({ 0.f, -0.95f, 0.0f });
+		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T * T1 * T2).v);
+		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+		glBindVertexArray(vao3);
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
 
 		glBindVertexArray(0);
 		glUseProgram(0);
@@ -486,6 +552,19 @@ namespace
 					else if (GLFW_RELEASE == aAction)
 						state->camControl.slowDown = false;
 				}
+				else if (GLFW_KEY_F == aKey)
+				{
+					if (GLFW_PRESS == aAction)
+						if (!state->camControl.animation)
+							state->camControl.animation = true;
+				}
+				else if (GLFW_KEY_R == aKey)
+				{
+					if (GLFW_PRESS == aAction) {
+						state->camControl.animation = false;
+						state->camControl.time = 0.0f;
+					}			
+				}
 			}
 		}
 	}
@@ -528,4 +607,3 @@ namespace
 			glfwDestroyWindow( window );
 	}
 }
-
