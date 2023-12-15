@@ -38,11 +38,13 @@ namespace
 		struct CamCtrl_
 		{
 			bool cameraActive;
-			bool actionZoomIn, actionZoomOut, actionLeft, actionRight, speedUP, slowDown, forword, backword, animation;
-			
+			bool actionZoomIn, actionZoomOut, actionLeft, actionRight, speedUP, slowDown;
+			bool cPressed, shiftP, forword, backword, animation, split;
 			float phi, theta;
-			float radius, x, y, time;
+			float radius, x, y, time, hight;
 			
+			int cState;
+			int cState2;
 			float lastX, lastY;
 		} camControl;
 	};
@@ -179,9 +181,13 @@ int main() try
 		});
 	state.prog = &prog;
 	state.camControl.radius = 10.f;
-
+	state.camControl.cState = 0;
+	state.camControl.cState2 = 0;
+	state.camControl.hight = 0.f;
 	state.camControl.x = 0.0f;
 	state.camControl.y = 0.0f;
+	state.camControl.cPressed = false;
+	state.camControl.shiftP = false;
 
 	auto last = Clock::now();
 	float angle = 0.f;
@@ -254,16 +260,16 @@ int main() try
 	{
 		// Let GLFW process events
 		glfwPollEvents();
-		
+		int nwidth, nheight;
 		// Check if window was resized.
 		float fbwidth, fbheight;
 		{
-			int nwidth, nheight;
+			
 			glfwGetFramebufferSize( window, &nwidth, &nheight );
 
 			fbwidth = float(nwidth);
 			fbheight = float(nheight);
-
+			
 			if( 0 == nwidth || 0 == nheight )
 			{
 				// Window minimized? Pause until it is unminimized.
@@ -275,7 +281,8 @@ int main() try
 				} while( 0 == nwidth || 0 == nheight );
 			}
 
-			glViewport( 0, 0, nwidth, nheight );
+			
+			
 		}
 
 		// Update state
@@ -290,26 +297,9 @@ int main() try
 
 		float sp = kMovementPerSecond_;
 
-		if (state.camControl.speedUP) 
-			sp = sp * 4;
-		else if (state.camControl.slowDown)
-			sp = sp / 4;
-
-		if (state.camControl.actionZoomIn)
-			state.camControl.radius -= sp * dt;
-		else if (state.camControl.actionZoomOut)
-			state.camControl.radius += sp * dt;
-		else if (state.camControl.actionLeft) 
-			state.camControl.x -= sp * dt;
-		else if (state.camControl.actionRight)
-			state.camControl.x += sp * dt;
-		else if (state.camControl.forword)
-			state.camControl.y += sp * dt;
-		else if (state.camControl.backword)
-			state.camControl.y -= sp * dt;
-
-		if (state.camControl.radius <= 0.1f)
-			state.camControl.radius = 0.1f;
+		Mat44f Rx;
+		Mat44f Ry;
+		Mat44f T;
 
 		float y = 0.f;
 		float x = 0.f;
@@ -323,26 +313,76 @@ int main() try
 			float c = std::cos(th);
 			float s = std::sin(th);
 			y = 10.0f * s;
+			state.camControl.hight = y;
 			x = 10.f - 10.f * c;
 			T1 = make_translation({ x, y, 0.0f });
 			T2 = make_rotation_z(kPi_ / 2.f - th - 3.141592f / 2.f);
+		}
+
+		if (state.camControl.cState == 0) {
+			if (state.camControl.speedUP)
+				sp = sp * 4;
+			else if (state.camControl.slowDown)
+				sp = sp / 4;
+
+			if (state.camControl.actionZoomIn)
+				state.camControl.radius -= sp * dt;
+			else if (state.camControl.actionZoomOut)
+				state.camControl.radius += sp * dt;
+			else if (state.camControl.actionLeft)
+				state.camControl.x -= sp * dt;
+			else if (state.camControl.actionRight)
+				state.camControl.x += sp * dt;
+			else if (state.camControl.forword)
+				state.camControl.y += sp * dt;
+			else if (state.camControl.backword)
+				state.camControl.y -= sp * dt;
+
+			if (state.camControl.radius <= 0.1f)
+				state.camControl.radius = 0.1f;
+
+			Rx = make_rotation_x(state.camControl.theta);
+			Ry = make_rotation_y(state.camControl.phi);
+			T = make_translation({ -state.camControl.x, -state.camControl.y, -state.camControl.radius });
+
+		}
+		else if (state.camControl.cState == 1) {
+
+			Rx = make_rotation_x(0.0f);
+			Ry = make_rotation_y(0.f);
+			T = make_translation({ -x, -y + 0.95f, -5.f });
+		}
+		else {
+			float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
+
+			Rx = make_rotation_x(0.f);
+			Ry = make_rotation_y(kPi_ - th * 90.f / 140.f);
+			T = make_translation({ 10.f , 0.f, -10.f });
 		}
 	
 		// Draw scene
 		OGL_CHECKPOINT_DEBUG();
 
 		//TODO: draw frame
-		Mat44f Rx = make_rotation_x(state.camControl.theta);
-		Mat44f Ry = make_rotation_y(state.camControl.phi);
-		Mat44f T = make_translation({ -state.camControl.x, -state.camControl.y, -state.camControl.radius });
+		
 
 		Mat44f model2world = make_rotation_y(angle);
 		Mat44f world2camera = T * Rx * Ry;
-		Mat44f projection = make_perspective_projection(
-			60.f * 3.1415926f / 180.f,
-			fbwidth / float(fbheight),
-			0.1f, 100.0f
-		);
+		Mat44f projection; 
+		if (state.camControl.split) {
+			projection = make_perspective_projection(
+				60.f * 3.1415926f / 180.f,
+				fbwidth / 2 / float(fbheight),
+				0.1f, 100.0f
+			);
+		}
+		else {
+			projection = make_perspective_projection(
+				60.f * 3.1415926f / 180.f,
+				fbwidth / float(fbheight),
+				0.1f, 100.0f
+			);
+		}
 		Mat44f projCameraWorld = projection * world2camera;
 
 		Mat33f normalMatrix = mat44_to_mat33(transpose(invert(model2world)));
@@ -350,6 +390,13 @@ int main() try
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		if (state.camControl.split) {
+			glViewport(0, 0, nwidth / 2.f, nheight);
+		}
+		else {
+			glViewport(0, 0, nwidth, nheight);
+		}
+		
 		glUseProgram(prog.programId());
 		
 		glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
@@ -368,13 +415,6 @@ int main() try
 		
 		glUseProgram(0);
 		
-		/*glUseProgram(prog3.programId());
-
-		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
-		lightDir = normalize(Vec3f{ 0.0f, 1.f, -1.f });
-		glUniform3fv(2, 1, &lightDir.x);
-		glUniform3f(3, 0.9f, 0.9f, 0.6f);
-		glUniform3f(4, 0.05f, 0.05f, 0.05f);*/
 
 		glUseProgram(prog2.programId());
 
@@ -428,7 +468,126 @@ int main() try
 		glUseProgram(0);
 		OGL_CHECKPOINT_DEBUG();
 
-		OGL_CHECKPOINT_DEBUG();
+		if (state.camControl.split) {
+
+			if (state.camControl.cState2 == 0) {
+				if (state.camControl.speedUP)
+					sp = sp * 4;
+				else if (state.camControl.slowDown)
+					sp = sp / 4;
+
+				if (state.camControl.actionZoomIn)
+					state.camControl.radius -= sp * dt;
+				else if (state.camControl.actionZoomOut)
+					state.camControl.radius += sp * dt;
+				else if (state.camControl.actionLeft)
+					state.camControl.x -= sp * dt;
+				else if (state.camControl.actionRight)
+					state.camControl.x += sp * dt;
+				else if (state.camControl.forword)
+					state.camControl.y += sp * dt;
+				else if (state.camControl.backword)
+					state.camControl.y -= sp * dt;
+
+				if (state.camControl.radius <= 0.1f)
+					state.camControl.radius = 0.1f;
+
+				Rx = make_rotation_x(state.camControl.theta);
+				Ry = make_rotation_y(state.camControl.phi);
+				T = make_translation({ -state.camControl.x, -state.camControl.y, -state.camControl.radius });
+
+			}
+			else if (state.camControl.cState2 == 1) {
+
+				Rx = make_rotation_x(0.0f);
+				Ry = make_rotation_y(0.f);
+				T = make_translation({ -x, -y + 0.95f, -5.f });
+			}
+			else {
+				float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
+
+				Rx = make_rotation_x(0.f);
+				Ry = make_rotation_y(kPi_ - th * 90.f / 140.f);
+				T = make_translation({ 10.f , 0.f, -10.f });
+			}
+
+			world2camera = T * Rx * Ry;
+			projCameraWorld = projection * world2camera;
+
+			glViewport(nwidth / 2.f, 0, nwidth / 2.f, nheight);
+
+			glUseProgram(prog.programId());
+
+			glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+
+			Vec3f lightDir = normalize(Vec3f{ 0.0f, 1.f, -1.0f });
+			glUniform3fv(2, 1, &lightDir.x);
+			glUniform3f(3, 0.9f, 0.9f, 0.6f);
+			glUniform3f(4, 0.05f, 0.05f, 0.05f);
+
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, tex);
+
+			glBindVertexArray(vao);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount);
+
+			glUseProgram(0);
+
+
+			glUseProgram(prog2.programId());
+
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+			glUniform3f(2, 0.3f + x, -0.6f + y, 0.3f);
+			glUniform3f(3, 0.05f, 0.05f, 0.05f);
+			glUniform3f(4, 0.1f, 0.5f, 0.1f);
+			glUniform3f(5, state.camControl.x, state.camControl.y, state.camControl.radius);
+			glUniform1f(6, 0.5f);
+			glUniform3f(7, -0.3f + x, -0.3f + y, -0.3f);
+			glUniform3f(8, 0.6f, 0.6f, 0.1f);
+			glUniform3f(9, 0.f + x, 0.4f + y, 0.f);
+			glUniform3f(10, 0.7f, 0.f, 0.f);
+
+
+			T = make_translation({ 25.f, -0.97f, 15.0f });
+			glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld * T).v);
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+			glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+			glBindVertexArray(vao2);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+
+			T = make_translation({ 0.f, -0.97f, 0.0f });
+			glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld * T).v);
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+			glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+			glBindVertexArray(vao2);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+
+			glUseProgram(0);
+			glUseProgram(prog2.programId());
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+			glUniform3f(2, 0.3f, -0.6f, 0.3f);
+			glUniform3f(3, 0.05f, 0.05f, 0.05f);
+			glUniform3f(4, 0.1f, 0.5f, 0.1f);
+			glUniform3f(5, state.camControl.x, state.camControl.y, state.camControl.radius);
+			glUniform1f(6, 0.5f);
+			glUniform3f(7, -0.3f, -0.3f, -0.3f);
+			glUniform3f(8, 0.6f, 0.6f, 0.1f);
+			glUniform3f(9, 0.f, 0.4f, 0.f);
+			glUniform3f(10, 0.7f, 0.f, 0.f);
+
+			T = make_translation({ 0.f, -0.95f, 0.0f });
+			glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld * T * T1 * T2).v);
+			glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
+			glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+			glBindVertexArray(vao3);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
+
+			glBindVertexArray(0);
+			glUseProgram(0);
+			OGL_CHECKPOINT_DEBUG();
+
+		}
 
 		// Display results
 		glfwSwapBuffers( window );
@@ -540,10 +699,25 @@ namespace
 				}
 				else if (GLFW_KEY_LEFT_SHIFT == aKey)
 				{
-					if (GLFW_PRESS == aAction)
+					if (GLFW_PRESS == aAction) {
 						state->camControl.speedUP = true;
-					else if (GLFW_RELEASE == aAction)
+						if (state->camControl.split) {
+							state->camControl.shiftP = true;
+							if (state->camControl.cPressed) {
+								if (state->camControl.cState2 == 2) {
+									state->camControl.cState2 = 0;
+								}
+								else {
+									state->camControl.cState2 += 1;
+								}
+							}
+						}
+					}
+					else if (GLFW_RELEASE == aAction) {
 						state->camControl.speedUP = false;
+						state->camControl.shiftP = false;
+					}
+
 				}
 				else if (GLFW_KEY_LEFT_CONTROL == aKey)
 				{
@@ -564,6 +738,46 @@ namespace
 						state->camControl.animation = false;
 						state->camControl.time = 0.0f;
 					}			
+				}
+				else if (GLFW_KEY_C == aKey)
+				{
+					if (GLFW_PRESS == aAction) {
+						
+						if (state->camControl.split) {
+							state->camControl.cPressed = true;
+							if (state->camControl.shiftP) {
+								if (state->camControl.cState2 == 2) {
+									state->camControl.cState2 = 0;
+								}
+								else {
+									state->camControl.cState2 += 1;
+								}
+							}
+							else {
+								if (state->camControl.cState == 2) {
+									state->camControl.cState = 0;
+								}
+								else {
+									state->camControl.cState += 1;
+								}
+							}
+						}
+						else {
+							if (state->camControl.cState == 2) {
+								state->camControl.cState = 0;
+							}
+							else {
+								state->camControl.cState += 1;
+							}
+						}
+					}
+					else if (GLFW_RELEASE == aAction)
+						state->camControl.cPressed = false;
+				}
+				else if (GLFW_KEY_V == aKey)
+				{
+					if (GLFW_PRESS == aAction)
+						state->camControl.split = !state->camControl.split;
 				}
 			}
 		}
