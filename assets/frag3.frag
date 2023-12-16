@@ -1,20 +1,12 @@
 #version 430
 
-in vec3 v2fColor;
-in vec3 v2fNormal; 
+in vec3 v2fColor; 
+in float time;
+layout( location = 0 ) out vec4 oColor;
 
-layout( location = 0 ) out vec3 oColor;
-layout( location = 2 ) uniform vec3 uLightDir; 
-layout( location = 3 ) uniform vec3 uLightDiffuse; 
-layout( location = 4 ) uniform vec3 uSceneAmbient;
 
 
 void main()
 {
-	
-	vec3 normal = normalize(v2fNormal); 
-	float nDotL = max( 0.0, dot( normal, uLightDir ) ); 
-	oColor = (uSceneAmbient + nDotL * uLightDiffuse) * v2fColor;
-
-
+	oColor = vec4( v2fColor, time / 25.0);
 }

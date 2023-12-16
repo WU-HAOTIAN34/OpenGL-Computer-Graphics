@@ -98,6 +98,7 @@
     <ClInclude Include="defaults.hpp" />
     <ClInclude Include="loadobj.hpp" />
     <ClInclude Include="model.hpp" />
+    <ClInclude Include="particle.hpp" />
     <ClInclude Include="simple_mesh.hpp" />
     <ClInclude Include="texture.hpp" />
   </ItemGroup>
@@ -105,6 +106,7 @@
     <ClCompile Include="loadobj.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
+    <ClCompile Include="particle.cpp" />
     <ClCompile Include="simple_mesh.cpp" />
     <ClCompile Include="texture.cpp" />
   </ItemGroup>

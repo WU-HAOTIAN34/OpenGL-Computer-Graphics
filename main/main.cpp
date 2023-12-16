@@ -21,6 +21,8 @@
 #include "simple_mesh.hpp"
 #include "loadobj.hpp"
 #include "texture.hpp"
+#include "particle.hpp"
+
 
 namespace
 {
@@ -46,7 +48,10 @@ namespace
 			int cState;
 			int cState2;
 			float lastX, lastY;
+
 		} camControl;
+
+		std::vector<Particle> particles;
 	};
 
 
@@ -253,6 +258,7 @@ int main() try
 	GLuint tex = load_texture_2d("assets/L4343A-4k.jpeg");
 
 
+
 	OGL_CHECKPOINT_ALWAYS();
 	
 	// Main loop
@@ -281,8 +287,6 @@ int main() try
 				} while( 0 == nwidth || 0 == nheight );
 			}
 
-			
-			
 		}
 
 		// Update state
@@ -303,6 +307,8 @@ int main() try
 
 		float y = 0.f;
 		float x = 0.f;
+		float y1 = 0.f;
+		float x1 = 0.f;
 		Mat44f T1 = make_translation({ 0.f, 0.0f, 0.0f });
 		Mat44f T2 = make_rotation_z(0.f);
 		if (state.camControl.animation) {
@@ -313,11 +319,31 @@ int main() try
 			float c = std::cos(th);
 			float s = std::sin(th);
 			y = 10.0f * s;
+			y1 = 9.50f * s;
 			state.camControl.hight = y;
 			x = 10.f - 10.f * c;
+			x1 = 9.5f - 9.5f * c;
 			T1 = make_translation({ x, y, 0.0f });
 			T2 = make_rotation_z(kPi_ / 2.f - th - 3.141592f / 2.f);
 		}
+
+		if (state.camControl.time > 0.f) {
+			for (GLuint i = 0; i < 20; ++i)
+			{
+				int tem = findParticle(state.particles);
+				resetParticle(state.particles, tem, { x1+0.f, y1-0.5f, 0.0f }, { -y, x-10.f, 0.0f });
+			}
+			for (GLuint i = 0; i < 500; ++i)
+			{
+				Particle& p = state.particles[i];
+				p.lifeTime -= 1.f; 
+				if (p.lifeTime > 0.0f)
+				{   
+					p.position += p.velocity * dt;
+				}
+			}
+		}
+
 
 		if (state.camControl.cState == 0) {
 			if (state.camControl.speedUP)
@@ -365,7 +391,6 @@ int main() try
 
 		//TODO: draw frame
 		
-
 		Mat44f model2world = make_rotation_y(angle);
 		Mat44f world2camera = T * Rx * Ry;
 		Mat44f projection; 
@@ -390,6 +415,9 @@ int main() try
 		glClear(GL_COLOR_BUFFER_BIT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 		if (state.camControl.split) {
 			glViewport(0, 0, nwidth / 2.f, nheight);
 		}
@@ -413,9 +441,27 @@ int main() try
 		glBindVertexArray(vao);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 		
+
+		if (state.camControl.time > 0.f) {
+			glDepthMask(GL_FALSE);
+
+			glUseProgram(0);
+			glUseProgram(prog3.programId());
+			glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
+
+			GLuint VAO = create_vao_particles(state.particles);
+			glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Particle)* state.particles.size(), state.particles.data());
+			glBindVertexArray(VAO);
+
+			glPointSize(20.0f);
+			glDrawArrays(GL_POINTS, 0, state.particles.size());
+
+			glDepthMask(GL_TRUE);
+		}
+
+
 		glUseProgram(0);
 		
-
 		glUseProgram(prog2.programId());
 
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
@@ -464,9 +510,14 @@ int main() try
 		glBindVertexArray(vao3);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
 
+		
 		glBindVertexArray(0);
 		glUseProgram(0);
 		OGL_CHECKPOINT_DEBUG();
+
+
+	
+
 
 		if (state.camControl.split) {
 
@@ -534,6 +585,22 @@ int main() try
 
 			glUseProgram(0);
 
+			if (state.camControl.time > 0.f) {
+				glDepthMask(GL_FALSE);
+
+				glUseProgram(0);
+				glUseProgram(prog3.programId());
+				glUniformMatrix4fv(0, 1, GL_TRUE, projCameraWorld.v);
+
+				GLuint VAO = create_vao_particles(state.particles);
+				glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Particle) * state.particles.size(), state.particles.data());
+				glBindVertexArray(VAO);
+
+				glPointSize(15.0f);
+				glDrawArrays(GL_POINTS, 0, state.particles.size());
+
+				glDepthMask(GL_TRUE);
+			}
 
 			glUseProgram(prog2.programId());
 
@@ -730,11 +797,14 @@ namespace
 				{
 					if (GLFW_PRESS == aAction)
 						if (!state->camControl.animation)
+							for (GLuint i = 0; i < 500; ++i)
+								state->particles.push_back(Particle());
 							state->camControl.animation = true;
 				}
 				else if (GLFW_KEY_R == aKey)
 				{
 					if (GLFW_PRESS == aAction) {
+						state->particles.clear();
 						state->camControl.animation = false;
 						state->camControl.time = 0.0f;
 					}			

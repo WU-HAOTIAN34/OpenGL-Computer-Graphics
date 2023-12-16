@@ -14,7 +14,7 @@ layout( location = 8 ) uniform vec3 lightColor2;
 layout( location = 9 ) uniform vec3 lightPos3;
 layout( location = 10 ) uniform vec3 lightColor3;  
 
-layout( location = 0 ) out vec3 oColor;
+layout( location = 0 ) out vec4 oColor;
 
 void main() {
     
@@ -74,6 +74,6 @@ void main() {
     diffuse3 /= distanceSquared3;
     specular3 /= distanceSquared3;
 
-    oColor = (ambient + diffuse + specular + ambient2 + diffuse2 + specular2 + ambient3 + diffuse3 + specular3) * v2fColor;
+    oColor = vec4((ambient + diffuse + specular + ambient2 + diffuse2 + specular2 + ambient3 + diffuse3 + specular3) * v2fColor, 1.0);
 
 }
