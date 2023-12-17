@@ -95,6 +95,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="button.hpp" />
     <ClInclude Include="defaults.hpp" />
     <ClInclude Include="loadobj.hpp" />
     <ClInclude Include="model.hpp" />
@@ -103,6 +104,7 @@
     <ClInclude Include="texture.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="button.cpp" />
     <ClCompile Include="loadobj.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />

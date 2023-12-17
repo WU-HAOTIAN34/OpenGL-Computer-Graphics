@@ -52,8 +52,10 @@
     <None Include="default.vert" />
     <None Include="frag2.frag" />
     <None Include="frag3.frag" />
+    <None Include="frag4.frag" />
     <None Include="vert2.vert" />
     <None Include="vert3.vert" />
+    <None Include="vert4.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

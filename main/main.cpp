@@ -7,10 +7,16 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "button.hpp"
 #include "../support/error.hpp"
 #include "../support/program.hpp"
 #include "../support/checkpoint.hpp"
 #include "../support/debug_output.hpp"
+
+
+#include "../third_party/fontstash/include/fontstash.h"
+#include "../third_party/fontstash/include/stb_truetype.h"
+#include "../third_party/fontstash/src/fontstash.cpp"
 
 #include "../vmlib/vec4.hpp"
 #include "../vmlib/mat44.hpp"
@@ -51,9 +57,11 @@ namespace
 
 		} camControl;
 
+		int buttonState1, buttonState2;
 		std::vector<Particle> particles;
 	};
 
+	void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 
 	void glfw_callback_motion_(GLFWwindow*, double, double);
 
@@ -130,6 +138,7 @@ int main() try
 	glfwSetWindowUserPointer(window, &state);
 	glfwSetKeyCallback( window, &glfw_callback_key_ );
 	glfwSetCursorPosCallback(window, &glfw_callback_motion_);
+	glfwSetMouseButtonCallback(window, &glfw_mouse_button_callback);
 
 	// Set up drawing stuff
 	glfwMakeContextCurrent( window );
@@ -184,6 +193,10 @@ int main() try
 		{ GL_VERTEX_SHADER, "assets/vert3.vert" },
 		{ GL_FRAGMENT_SHADER, "assets/frag3.frag" }
 		});
+	ShaderProgram prog4({
+		{ GL_VERTEX_SHADER, "assets/vert4.vert" },
+		{ GL_FRAGMENT_SHADER, "assets/frag4.frag" }
+		});
 	state.prog = &prog;
 	state.camControl.radius = 10.f;
 	state.camControl.cState = 0;
@@ -191,6 +204,8 @@ int main() try
 	state.camControl.hight = 0.f;
 	state.camControl.x = 0.0f;
 	state.camControl.y = 0.0f;
+	state.buttonState1 = 0;
+	state.buttonState2 = 0;
 	state.camControl.cPressed = false;
 	state.camControl.shiftP = false;
 
@@ -254,10 +269,20 @@ int main() try
 	GLuint vao3 = create_vao(ship);
 	std::size_t vertexCount3 = ship.positions.size();
 
+	auto test = make_cylinder(true, 2, { 0.9f, 0.1f, 0.1f },
+		make_scaling(0.25f, 0.08f, 0.08f) *
+		make_translation({ -1.2f, -10.f, 0.f })
+	);
+	GLuint vao4 = create_vao(test);
+	std::size_t vertexCount4 = test.positions.size();
+
+	auto test1 = make_cylinder(true, 2, { 0.1f, 0.9f, 0.1f },
+		make_scaling(0.25f, 0.08f, 0.08f) *
+		make_translation({ 0.2f, -10.f, 0.f })
+	);
+	GLuint vao5 = create_vao(test1);
 
 	GLuint tex = load_texture_2d("assets/L4343A-4k.jpeg");
-
-
 
 	OGL_CHECKPOINT_ALWAYS();
 	
@@ -319,10 +344,10 @@ int main() try
 			float c = std::cos(th);
 			float s = std::sin(th);
 			y = 10.0f * s;
-			y1 = 9.50f * s;
+			y1 = 9.80f * s;
 			state.camControl.hight = y;
 			x = 10.f - 10.f * c;
-			x1 = 9.5f - 9.5f * c;
+			x1 = 9.8f - 9.8f * c;
 			T1 = make_translation({ x, y, 0.0f });
 			T2 = make_rotation_z(kPi_ / 2.f - th - 3.141592f / 2.f);
 		}
@@ -380,10 +405,8 @@ int main() try
 		}
 		else {
 			float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
-
-			Rx = make_rotation_x(0.f);
-			Ry = make_rotation_y(kPi_ - th * 90.f / 140.f);
-			T = make_translation({ 10.f , 0.f, -10.f });
+			Ry = make_rotation_y( th * 45.f / 140.f);
+			T = make_translation({ 0.f  - 20.f * std::sin(th * 45.f / 140.f), 0.f, -20.f * std::cos(th * 45.f / 140.f) });
 		}
 	
 		// Draw scene
@@ -418,12 +441,16 @@ int main() try
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+
+		glViewport(0, 0, nwidth, nheight);
+
 		if (state.camControl.split) {
 			glViewport(0, 0, nwidth / 2.f, nheight);
 		}
 		else {
 			glViewport(0, 0, nwidth, nheight);
 		}
+
 		
 		glUseProgram(prog.programId());
 		
@@ -458,8 +485,7 @@ int main() try
 
 			glDepthMask(GL_TRUE);
 		}
-
-
+		
 		glUseProgram(0);
 		
 		glUseProgram(prog2.programId());
@@ -475,7 +501,7 @@ int main() try
 		glUniform3f(9, 0.f + x, 0.4f + y, 0.f);
 		glUniform3f(10, 0.7f, 0.f, 0.f);
 
-
+		
 		T = make_translation({ 25.f, -0.97f, 15.0f });
 		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
@@ -510,15 +536,54 @@ int main() try
 		glBindVertexArray(vao3);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
 
-		
+		glUseProgram(0);
+		glUseProgram(prog4.programId());
+
+		glDepthMask(GL_FALSE);
+
+		if (state.buttonState1 == 0) {
+			static float const baseColor[] = { 1.f, 1.f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.3f);
+		}
+		else if (state.buttonState1 == 1) {
+			static float const baseColor[] = { 1.f, 1.f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.9f);
+		}
+		else if (state.buttonState1 == 2){
+			static float const baseColor[] = { 0.2f, 1.f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.9f);
+		}
+		glBindVertexArray(vao4);
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
+
+		if (state.buttonState2 == 0) {
+			static float const baseColor[] = { 1.f, 1.f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.3f);
+		}
+		else if (state.buttonState2 == 1) {
+			static float const baseColor[] = { 1.f, 1.f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.9f);
+		}
+		else if (state.buttonState2 == 2) {
+			static float const baseColor[] = { 0.1f, 0.2f, 1.f };
+			glUniform3fv(1, 1, baseColor);
+			glUniform1f(0, 0.9f);
+		}
+		glBindVertexArray(vao5);
+		glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
+
+		glDepthMask(GL_TRUE);
+
 		glBindVertexArray(0);
 		glUseProgram(0);
 		OGL_CHECKPOINT_DEBUG();
 
-
-	
-
-
+		
 		if (state.camControl.split) {
 
 			if (state.camControl.cState2 == 0) {
@@ -556,10 +621,8 @@ int main() try
 			}
 			else {
 				float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
-
-				Rx = make_rotation_x(0.f);
-				Ry = make_rotation_y(kPi_ - th * 90.f / 140.f);
-				T = make_translation({ 10.f , 0.f, -10.f });
+				Ry = make_rotation_y(th * 45.f / 140.f);
+				T = make_translation({ 0.f - 20.f * std::sin(th * 45.f / 140.f), 0.f, -20.f * std::cos(th * 45.f / 140.f) });
 			}
 
 			world2camera = T * Rx * Ry;
@@ -650,12 +713,61 @@ int main() try
 			glBindVertexArray(vao3);
 			glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
 
+
+			glUseProgram(0);
+			glUseProgram(prog4.programId());
+
+			glDepthMask(GL_FALSE);
+
+			if (state.buttonState1 == 0) {
+				static float const baseColor[] = { 1.f, 1.f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.3f);
+			}
+			else if (state.buttonState1 == 1) {
+				static float const baseColor[] = { 1.f, 1.f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.9f);
+			}
+			else if (state.buttonState1 == 2) {
+				static float const baseColor[] = { 0.2f, 1.f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.9f);
+			}
+			glBindVertexArray(vao4);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
+
+			if (state.buttonState2 == 0) {
+				static float const baseColor[] = { 1.f, 1.f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.3f);
+			}
+			else if (state.buttonState2 == 1) {
+				static float const baseColor[] = { 1.f, 1.f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.9f);
+			}
+			else if (state.buttonState2 == 2) {
+				static float const baseColor[] = { 0.1f, 0.2f, 1.f };
+				glUniform3fv(1, 1, baseColor);
+				glUniform1f(0, 0.9f);
+			}
+			glBindVertexArray(vao5);
+			glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
+
+			glDepthMask(GL_TRUE);
+
+
+
 			glBindVertexArray(0);
 			glUseProgram(0);
 			OGL_CHECKPOINT_DEBUG();
 
 		}
 
+
+		glBindVertexArray(0);
+		glUseProgram(0);
 		// Display results
 		glfwSwapBuffers( window );
 	}
@@ -870,13 +982,80 @@ namespace
 				else if (state->camControl.theta < -kPi_ / 2.f)
 					state->camControl.theta = -kPi_ / 2.f;
 			}
+			else
+			{
+				double xpos, ypos;
+				glfwGetCursorPos(aWindow, &xpos, &ypos);
+				int width, height;
+				glfwGetWindowSize(aWindow, &width, &height);
+				int x = buttonState(static_cast<float>(width), static_cast<float>(height), static_cast<float>(xpos), static_cast<float>(ypos), state->camControl.split);
+				
+				if (x == 1) {
+					state->buttonState1 = 1;
+				}
+				else if (x == 2) {
+					state->buttonState2 = 1;
+				}
+				else {
+					state->buttonState1 = 0;
+					state->buttonState2 = 0;
+				}
+
+			}
 
 			state->camControl.lastX = float(aX);
 			state->camControl.lastY = float(aY);
 		}
 	}
 
+	void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
+
+		if (auto* state = static_cast<State_*>(glfwGetWindowUserPointer(window))) {
+			if (button == GLFW_MOUSE_BUTTON_LEFT) {
+
+				if (action == GLFW_PRESS) {
+
+					double xpos, ypos;
+					glfwGetCursorPos(window, &xpos, &ypos);
+					int width, height;
+					glfwGetWindowSize(window, &width, &height);
+					int x = buttonState(static_cast<float>(width), static_cast<float>(height), static_cast<float>(xpos), static_cast<float>(ypos), state->camControl.split);
+
+					if (x == 1) {
+						for (GLuint i = 0; i < 500; ++i)
+							state->particles.push_back(Particle());
+						state->camControl.animation = true;
+						state->buttonState1 = 2;
+					}
+					else if (x == 2) {
+						state->particles.clear();
+						state->camControl.animation = false;
+						state->camControl.time = 0.0f;
+						state->buttonState2 = 2;
+					}
+
+				}
+				else if (action == GLFW_RELEASE) {
+					double xpos, ypos;
+					glfwGetCursorPos(window, &xpos, &ypos);
+					int width, height;
+					glfwGetWindowSize(window, &width, &height);
+					int x = buttonState(static_cast<float>(width), static_cast<float>(height), static_cast<float>(xpos), static_cast<float>(ypos), state->camControl.split);
+
+					if (x == 1) {
+						state->buttonState1 = 1;
+					}
+					else if (x == 2) {
+						state->buttonState2 = 1;
+					}
+				}
+			}
+		}
+
+	}
+
 }
+
 
 namespace
 {
