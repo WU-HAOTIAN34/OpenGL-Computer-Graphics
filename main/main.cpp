@@ -286,6 +286,9 @@ int main() try
 
 	OGL_CHECKPOINT_ALWAYS();
 	
+	GLuint queryID[9];
+	glGenQueries(9, queryID);
+
 	// Main loop
 	while( !glfwWindowShouldClose( window ) )
 	{
@@ -466,8 +469,9 @@ int main() try
 		glBindTexture(GL_TEXTURE_2D, tex);
 
 		glBindVertexArray(vao);
+		glQueryCounter(queryID[0], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-		
+		glQueryCounter(queryID[1], GL_TIMESTAMP);
 
 		if (state.camControl.time > 0.f) {
 			glDepthMask(GL_FALSE);
@@ -507,14 +511,18 @@ int main() try
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao2);
+		glQueryCounter(queryID[3], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+		glQueryCounter(queryID[4], GL_TIMESTAMP);
 
 		T = make_translation({ 0.f, -0.97f, 0.0f });
 		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao2);
+		glQueryCounter(queryID[5], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
+		glQueryCounter(queryID[6], GL_TIMESTAMP);
 
 		glUseProgram(0);
 		glUseProgram(prog2.programId());
@@ -534,7 +542,10 @@ int main() try
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao3);
+
+		glQueryCounter(queryID[7], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
+		glQueryCounter(queryID[8], GL_TIMESTAMP);
 
 		glUseProgram(0);
 		glUseProgram(prog4.programId());

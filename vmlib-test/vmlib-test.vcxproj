@@ -95,7 +95,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="empty.cpp" />
+    <ClCompile Include="mat44Multi.cpp" />
+    <ClCompile Include="project.cpp" />
+    <ClCompile Include="rotation.cpp" />
+    <ClCompile Include="transformation.cpp" />
+    <ClCompile Include="vec4Multi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\vmlib\vmlib.vcxproj">
