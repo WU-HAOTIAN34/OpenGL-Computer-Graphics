@@ -28,6 +28,7 @@
 #include "loadobj.hpp"
 #include "texture.hpp"
 #include "particle.hpp"
+#include <iostream>
 
 
 namespace
@@ -286,8 +287,16 @@ int main() try
 
 	OGL_CHECKPOINT_ALWAYS();
 	
-	GLuint queryID[9];
-	glGenQueries(9, queryID);
+	GLuint queryID[14];
+	glGenQueries(14, queryID);
+
+	auto frameStartTime = std::chrono::high_resolution_clock::now();
+	auto frameEndTime = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> frameDuration;
+
+	auto renderingStartTime = std::chrono::high_resolution_clock::now();
+	auto renderingEndTime = std::chrono::high_resolution_clock::now();
+	std::chrono::duration<double> renderingDuration;
 
 	// Main loop
 	while( !glfwWindowShouldClose( window ) )
@@ -469,6 +478,7 @@ int main() try
 		glBindTexture(GL_TEXTURE_2D, tex);
 
 		glBindVertexArray(vao);
+		
 		glQueryCounter(queryID[0], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount);
 		glQueryCounter(queryID[1], GL_TIMESTAMP);
@@ -485,8 +495,9 @@ int main() try
 			glBindVertexArray(VAO);
 
 			glPointSize(20.0f);
+			glQueryCounter(queryID[8], GL_TIMESTAMP);
 			glDrawArrays(GL_POINTS, 0, state.particles.size());
-
+			glQueryCounter(queryID[9], GL_TIMESTAMP);
 			glDepthMask(GL_TRUE);
 		}
 		
@@ -511,18 +522,19 @@ int main() try
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao2);
-		glQueryCounter(queryID[3], GL_TIMESTAMP);
+
+		glQueryCounter(queryID[2], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
-		glQueryCounter(queryID[4], GL_TIMESTAMP);
+		glQueryCounter(queryID[3], GL_TIMESTAMP);
 
 		T = make_translation({ 0.f, -0.97f, 0.0f });
 		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao2);
-		glQueryCounter(queryID[5], GL_TIMESTAMP);
+		glQueryCounter(queryID[4], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount2);
-		glQueryCounter(queryID[6], GL_TIMESTAMP);
+		glQueryCounter(queryID[5], GL_TIMESTAMP);
 
 		glUseProgram(0);
 		glUseProgram(prog2.programId());
@@ -543,9 +555,9 @@ int main() try
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
 		glBindVertexArray(vao3);
 
-		glQueryCounter(queryID[7], GL_TIMESTAMP);
+		glQueryCounter(queryID[6], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount3);
-		glQueryCounter(queryID[8], GL_TIMESTAMP);
+		glQueryCounter(queryID[7], GL_TIMESTAMP);
 
 		glUseProgram(0);
 		glUseProgram(prog4.programId());
@@ -568,8 +580,9 @@ int main() try
 			glUniform1f(0, 0.9f);
 		}
 		glBindVertexArray(vao4);
+		glQueryCounter(queryID[10], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
-
+		glQueryCounter(queryID[11], GL_TIMESTAMP);
 		if (state.buttonState2 == 0) {
 			static float const baseColor[] = { 1.f, 1.f, 1.f };
 			glUniform3fv(1, 1, baseColor);
@@ -586,8 +599,9 @@ int main() try
 			glUniform1f(0, 0.9f);
 		}
 		glBindVertexArray(vao5);
+		glQueryCounter(queryID[12], GL_TIMESTAMP);
 		glDrawArrays(GL_TRIANGLES, 0, vertexCount4);
-
+		glQueryCounter(queryID[13], GL_TIMESTAMP);
 		glDepthMask(GL_TRUE);
 
 		glBindVertexArray(0);
@@ -780,6 +794,63 @@ int main() try
 		glBindVertexArray(0);
 		glUseProgram(0);
 		// Display results
+
+		GLuint64 startTime[7], endTime[7];
+		glGetQueryObjectui64v(queryID[0], GL_QUERY_RESULT, &startTime[0]);
+		glGetQueryObjectui64v(queryID[1], GL_QUERY_RESULT, &endTime[0]);
+		glGetQueryObjectui64v(queryID[2], GL_QUERY_RESULT, &startTime[1]);
+		glGetQueryObjectui64v(queryID[3], GL_QUERY_RESULT, &endTime[1]);
+		glGetQueryObjectui64v(queryID[4], GL_QUERY_RESULT, &startTime[2]);
+		glGetQueryObjectui64v(queryID[5], GL_QUERY_RESULT, &endTime[2]);
+		glGetQueryObjectui64v(queryID[6], GL_QUERY_RESULT, &startTime[3]);
+		glGetQueryObjectui64v(queryID[7], GL_QUERY_RESULT, &endTime[3]);
+		glGetQueryObjectui64v(queryID[10], GL_QUERY_RESULT, &startTime[4]);
+		glGetQueryObjectui64v(queryID[11], GL_QUERY_RESULT, &endTime[4]);
+		glGetQueryObjectui64v(queryID[12], GL_QUERY_RESULT, &startTime[5]);
+		glGetQueryObjectui64v(queryID[13], GL_QUERY_RESULT, &endTime[5]);
+
+		GLuint64 timeElapsed[7];
+		for (int num_ = 0; num_ < 6; num_++) {
+			timeElapsed[num_] = endTime[num_] - startTime[num_];
+		}
+
+		double section12Time = static_cast<double>(timeElapsed[0]);
+		double section14Time = static_cast<double>(timeElapsed[1]) + static_cast<double>(timeElapsed[2]);
+		double section15Time = static_cast<double>(timeElapsed[3]);
+		double fullRenderingTime = static_cast<double>(timeElapsed[4]) + static_cast<double>(timeElapsed[5]) + 
+			+ section12Time + section14Time + section15Time;
+
+		if (state.camControl.time > 0.f) {
+			glGetQueryObjectui64v(queryID[8], GL_QUERY_RESULT, &startTime[6]);
+			glGetQueryObjectui64v(queryID[9], GL_QUERY_RESULT, &endTime[6]);
+			timeElapsed[6] = endTime[6] - startTime[6];
+			fullRenderingTime += static_cast<double>(timeElapsed[6]);
+		}
+
+		fullRenderingTime *= 1.0e-9;
+		section12Time *= 1.0e-9;
+		section14Time *= 1.0e-9;
+		section15Time *= 1.0e-9;
+
+		std::cout << "Full Rendering Time: " << fullRenderingTime << " seconds\n";
+		std::cout << "Section 1.2 Time: " << section12Time << " seconds\n";
+		std::cout << "Section 1.4 Time: " << section14Time << " seconds\n";
+		std::cout << "Section 1.5 Time: " << section15Time << " seconds\n";
+
+
+		frameEndTime = std::chrono::high_resolution_clock::now();
+		frameDuration = frameEndTime - frameStartTime;
+		frameStartTime = frameEndTime;
+
+		renderingStartTime = std::chrono::high_resolution_clock::now();
+
+		renderingEndTime = std::chrono::high_resolution_clock::now();
+		renderingDuration = renderingEndTime - renderingStartTime;
+
+		std::cout << "Frame-to-frame time: " << frameDuration.count() << " seconds" << std::endl;
+		std::cout << "Rendering command submission time: " << renderingDuration.count() << " seconds" << std::endl;
+
+
 		glfwSwapBuffers( window );
 	}
 
