@@ -103,9 +103,9 @@ SimpleMeshData make_cone(bool aCapped, std::size_t aSubdivs, Vec3f aColor, Mat44
 
 	for (std::size_t i = 0; i < aSubdivs; ++i) {
 		float const angle = (i + 1) / float(aSubdivs) * 2.f * 3.1415926f;
-		float y = std::cos(angle);
+		//float y = std::cos(angle);
 		float z = std::sin(angle);
-		float prevY = std::cos(i / float(aSubdivs) * 2.f * 3.1415926f);
+		//float prevY = std::cos(i / float(aSubdivs) * 2.f * 3.1415926f);
 		float prevZ = std::sin(i / float(aSubdivs) * 2.f * 3.1415926f);
 
 		Vec3f tip = Vec3f{ 0.f, 1.f, 0.f }; 

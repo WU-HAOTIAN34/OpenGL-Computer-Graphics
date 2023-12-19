@@ -415,9 +415,10 @@ int main() try
 			Ry = make_rotation_y(0.f);
 			T = make_translation({ -x, -y + 0.95f, -5.f });
 		}
-		else {
+		else if (state.camControl.cState == 2) {
 			float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
 			Ry = make_rotation_y( th * 45.f / 140.f);
+			Rx = make_rotation_x(0.0f);
 			T = make_translation({ 0.f  - 20.f * std::sin(th * 45.f / 140.f), 0.f, -20.f * std::cos(th * 45.f / 140.f) });
 		}
 	
@@ -505,6 +506,7 @@ int main() try
 		
 		glUseProgram(prog2.programId());
 
+		renderingStartTime = std::chrono::high_resolution_clock::now();
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniform3f(2, 0.3f + x, -0.6f + y, 0.3f);
 		glUniform3f(3, 0.05f, 0.05f, 0.05f);
@@ -521,6 +523,8 @@ int main() try
 		glUniformMatrix4fv(0, 1, GL_TRUE, (projCameraWorld* T).v);
 		glUniformMatrix3fv(1, 1, GL_TRUE, normalMatrix.v);
 		glUniformMatrix4fv(11, 1, GL_TRUE, T.v);
+		renderingEndTime = std::chrono::high_resolution_clock::now();
+
 		glBindVertexArray(vao2);
 
 		glQueryCounter(queryID[2], GL_TIMESTAMP);
@@ -644,9 +648,10 @@ int main() try
 				Ry = make_rotation_y(0.f);
 				T = make_translation({ -x, -y + 0.95f, -5.f });
 			}
-			else {
+			else if (state.camControl.cState2 == 2) {
 				float th = 0.025f * kPi_ * state.camControl.time * state.camControl.time / 180.0f;
 				Ry = make_rotation_y(th * 45.f / 140.f);
+				Rx = make_rotation_x(0.0f);
 				T = make_translation({ 0.f - 20.f * std::sin(th * 45.f / 140.f), 0.f, -20.f * std::cos(th * 45.f / 140.f) });
 			}
 
@@ -842,9 +847,9 @@ int main() try
 		frameDuration = frameEndTime - frameStartTime;
 		frameStartTime = frameEndTime;
 
-		renderingStartTime = std::chrono::high_resolution_clock::now();
+		
 
-		renderingEndTime = std::chrono::high_resolution_clock::now();
+		
 		renderingDuration = renderingEndTime - renderingStartTime;
 
 		std::cout << "Frame-to-frame time: " << frameDuration.count() << " seconds" << std::endl;
@@ -990,10 +995,11 @@ namespace
 				else if (GLFW_KEY_F == aKey)
 				{
 					if (GLFW_PRESS == aAction)
-						if (!state->camControl.animation)
+						if (!state->camControl.animation) {
 							for (GLuint i = 0; i < 500; ++i)
 								state->particles.push_back(Particle());
 							state->camControl.animation = true;
+						}		
 				}
 				else if (GLFW_KEY_R == aKey)
 				{
