@@ -1,4 +1,4 @@
-COMP3811 Coursework 2
+#Coursework 8
 =====================
 
 Base project for the COMP3811 Coursework 2. Do not re-distribute the code
