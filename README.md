@@ -39,5 +39,24 @@ Structure:
 	compiling your project. You must not include or rely on pre-compiled
 	objects, libraries (shared or static) or executables.
 
-Use `w` `a` `s` `d` `q` `e` to control camera movement
+## Operating Instructions
+
+Press `Space` to enter control mode
+
+Use `W` `A` `S` `D` `Q` `E` to control camera movement
+
+Press and hold `SHIFT` or `CTRL` to speed up or slow down the camera
+
+Use `F` to lauch the roket, user `R` to reset the roket 
+
+Press `V` to split the screen
+
+Press `C` to change the mode of camera
+
+![img](https://github.com/WU-HAOTIAN34/OpenGL-Computer-Graphics/blob/main/demo/2024-05-15_180503.png)
+![img](https://github.com/WU-HAOTIAN34/OpenGL-Computer-Graphics/blob/main/demo/2024-05-15_180512.png)
+![img](https://github.com/WU-HAOTIAN34/OpenGL-Computer-Graphics/blob/main/demo/2024-05-15_180525.png)
+![img](https://github.com/WU-HAOTIAN34/OpenGL-Computer-Graphics/blob/main/demo/2024-05-15_180542.png)
+![img](https://github.com/WU-HAOTIAN34/OpenGL-Computer-Graphics/blob/main/demo/2024-05-15_180555.png)
+
 
