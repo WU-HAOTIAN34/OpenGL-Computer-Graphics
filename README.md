@@ -1,4 +1,4 @@
-#Coursework 8
+# A Simple Rocket Launch Game
 =====================
 
 Base project for the COMP3811 Coursework 2. Do not re-distribute the code
@@ -38,4 +38,6 @@ Structure:
 	may not add additional custom build steps that the user must perform when
 	compiling your project. You must not include or rely on pre-compiled
 	objects, libraries (shared or static) or executables.
+
+Use `w` `a` `s` `d` `q` `e` to control camera movement
 
