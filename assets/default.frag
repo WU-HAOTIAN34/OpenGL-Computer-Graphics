@@ -14,7 +14,6 @@ void main()
 	
 	vec3 normal = normalize(v2fNormal); 
 	float nDotL = max( 0.0, dot( normal, uLightDir ) ); 
-	oColor = vec4((uSceneAmbient + nDotL * uLightDiffuse) * v2fColor, 1.0);
-	oColor = vec4(texture( uTexture, v2fTexCoord ).rgb, 1.0); 
+	oColor = vec4(texture( uTexture, v2fTexCoord ).rgb * (uSceneAmbient + nDotL * uLightDiffuse) * v2fColor, 1.0); 
 
 }

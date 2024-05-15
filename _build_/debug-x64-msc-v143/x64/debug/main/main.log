@@ -1,0 +1,22 @@
+﻿  main.cpp
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(454,28): warning C4244: “参数”: 从“float”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(477,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(493,51): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(524,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(533,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(556,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(581,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(600,33): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(654,39): warning C4244: “参数”: 从“float”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(654,22): warning C4244: “参数”: 从“float”转换到“GLint”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(661,10): warning C4456: “lightDir”的声明隐藏了上一个本地声明
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(466,9): message : 参见“lightDir”的声明
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(670,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(686,52): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(710,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(717,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(737,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(761,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(779,34): warning C4267: “参数”: 从“size_t”转换到“GLsizei”，可能丢失数据
+D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\main\main.cpp(1092,82): warning C4100: “mods”: 未引用的形参
+  main.vcxproj -> D:\Study\Year 4\Semester 1\Computer Graphics\Coursework 2\cw2\bin\main-debug-x64-msc-v143.exe

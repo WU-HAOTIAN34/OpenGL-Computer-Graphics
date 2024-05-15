@@ -13,11 +13,6 @@
 #include "../support/checkpoint.hpp"
 #include "../support/debug_output.hpp"
 
-
-#include "../third_party/fontstash/include/fontstash.h"
-#include "../third_party/fontstash/include/stb_truetype.h"
-#include "../third_party/fontstash/src/fontstash.cpp"
-
 #include "../vmlib/vec4.hpp"
 #include "../vmlib/mat44.hpp"
 #include "../vmlib/mat33.hpp"
@@ -50,7 +45,7 @@ namespace
 			bool actionZoomIn, actionZoomOut, actionLeft, actionRight, speedUP, slowDown;
 			bool cPressed, shiftP, forword, backword, animation, split;
 			float phi, theta;
-			float radius, x, y, time, hight;
+			float radius, x, y, time;
 			
 			int cState;
 			int cState2;
@@ -202,7 +197,6 @@ int main() try
 	state.camControl.radius = 10.f;
 	state.camControl.cState = 0;
 	state.camControl.cState2 = 0;
-	state.camControl.hight = 0.f;
 	state.camControl.x = 0.0f;
 	state.camControl.y = 0.0f;
 	state.buttonState1 = 0;
@@ -357,7 +351,6 @@ int main() try
 			float s = std::sin(th);
 			y = 10.0f * s;
 			y1 = 9.80f * s;
-			state.camControl.hight = y;
 			x = 10.f - 10.f * c;
 			x1 = 9.8f - 9.8f * c;
 			T1 = make_translation({ x, y, 0.0f });
